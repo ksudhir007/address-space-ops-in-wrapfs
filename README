@@ -3,7 +3,7 @@ The source files present in this directory consists of source-code to add to sup
  --------------
 | Source files |
  -------------- 
-Below files are modified
+Below files are modified version of original wrapfs
 1) wrapfs/wrapfs.h - Added extra fields in wrapfs_sb_info struct to hold mount options and key to encrypt and decrypt. Created a structure which hold the mount options. This is done by keeping extensibility in mind. If in future some more mount options are added then the code can be modified and parsed easily without much hassle. Added wrapfs_parse_options function which parses the mount options. This function is implemented using the similar function in UDF file system source code. Added extra file_operations structure.
 2) wrapfs/file.c - Added new file operations structure. Modified ->read, ->write, ->unlocked_ioctl to handle encryption-decryption. Modified ->mmap operation to assign address_operations according to the mount options provided.
 3) wrapfs/lookup.c - Modified wrapfs_iget() function to make it point to the necessary file_operations and address_operations according to the mount options specified.
@@ -16,7 +16,10 @@ Newly added files
 1) wrapfs/wrapfs_setkey.c - This is a user-level ioctl program which is used to set/reset the key required for encrypt/decrypt files. I am currently using 1 as ioctl number for setting or resetting key. If the key length is not restricted at the user program , however only 32 bytes will be copied at the kernel level in unlocked_ioctl() function. If the key is provided as 123 then I am using it as 12300000000000000000000000000000 making it length of 32 bytes. I am using 32 bytes of 0 to reset the key. I am not allowing to read or write data when the key is not set or the key is revoked. The user can give the key of any length of 0s to revoke, I am internally converting it to 32 bytes length and interpreting.
 2) wrapfs/test/read_demo.c - This file tries to read data from /mnt/mpt_wrapfs/a.txt
 3) wrapfs/test/write_demo.c - This file tries to write data to /mnt/mpt_wrapfs/a.txt, If the file doesnot exists it creates it and tries to write data.
-4) wrapfs/README.HW2 - This README.HW2 file.
+
+
+The kernel sources can be downloaded from  http://www.kernel.org/pub/linux/kernel/v3.0/linux-3.2.2.tar.bz2
+Once downloaded, copy the contents of wrapfs folder to fs/wrapfs/ in kernel sources.
 
  -------------
 | Executables |
@@ -73,36 +76,36 @@ I was not able to run LTP test suite on my project. Instead I have written a sam
 Create mpt_wrapfs directory in /mnt/. Before running every test case mentioned below, make sure that /tmp is cleared (delete all the existing files) and /mnt/mpt_wrapfs is cleared (delete all the existing files).
 
 I have created below files for testing
-hw2-skasanavesi/fs/wrapfs/read_demo.c - this file tries to read /mnt/mpt_wrapfs/a.txt
-hw2-skasanavesi/fs/wrapfs/write_demo.c - this file tries to write /mnt/mpt_wrapfs/a.txt
+wrapfs/read_demo.c - this file tries to read /mnt/mpt_wrapfs/a.txt
+wrapfs/write_demo.c - this file tries to write /mnt/mpt_wrapfs/a.txt
 
 Please see "Steps to be followed for compiling and executing this project" section mentioned above to use various conditional compiling useful for testing below test cases.
 
 After compiling, goto fs/wrapfs and execute
 # insmod wrapfs.ko
 
-Testcase 1 - Compile using "make" in hw2-skasanavesi/fs/wrapfs/
+Testcase 1 - Compile using "make" in <downloaded_kernel_sources_path>/fs/wrapfs/
 # mount -t wrapfs /tmp /mnt/mpt_wrapfs
 # cd test
 # ./write_demo.o
 # ./read_demo.o
 It should display "Writing th". In this test case, it will not use address operations. The original wrapfs code works fine as if it is unmodified.
 
-Testcase 2 - Compile using "make" in hw2-skasanavesi/fs/wrapfs/
+Testcase 2 - Compile using "make" in <downloaded_kernel_sources_path>/fs/wrapfs/
 # mount -t wrapfs -o mmap /tmp /mnt/mpt_wrapfs
 # cd test
 # ./write_demo.o
 # ./read_demo.o
 It should display "Writing th". In this test case, it will use address operations. Instead of using vfs_read() and vfs_write(), the address operations ->readpage and ->write_begin, ->write_end will be invoked.
 
-Testcase 3 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in hw2-skasanavesi/fs/wrapfs/
+Testcase 3 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in <downloaded_kernel_sources_path>/fs/wrapfs/
 # mount -t wrapfs /tmp /mnt/mpt_wrapfs
 # cd test
 # ./write_demo.o
 # ./read_demo.o
 It should display "Writing th". In this test case, it will not use address operations. The original wrapfs code works fine as if it is unmodified. The only difference between Testcase 1 and this testcase is that the conditional code inserted between #ifdef WRAPFS_CRYPTO and #endif will be compiled and burnt into wrapfs.ko 
 
-Testcase 4 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in hw2-skasanavesi/fs/wrapfs/
+Testcase 4 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in <downloaded_kernel_sources_path>/fs/wrapfs/
 # mount -t wrapfs -o mmap /tmp /mnt/mpt_wrapfs
 # ./wrapfs_set.o -k 123 /mnt/mpt_wrapfs
 # cd test
@@ -115,7 +118,7 @@ Writing files from /mnt/mpt_wrapfs will encrypt the data using the key set using
 
 The key can be reset anytime by "# ./wrapfs_set.o -k 345 /mnt/mpt_wrapfs", if the key is changed in between and write or read is performed and again read/write are performed then they will be using newly provided key to encrypt and decrypt and possibly will result in providing the user with corrupted data. The key can be reset using any number of 0s in the key. Ex: "# ./wrapfs_set.o -k 0 /mnt/mpt_wrapfs".
 
-Testcase 5 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in hw2-skasanavesi/fs/wrapfs/
+Testcase 5 - Compile using "make CRYPTO=-DWRAPFS_CRYPTO" in <downloaded_kernel_sources_path>/fs/wrapfs/
 # mount -t wrapfs -o mmap /tmp /mnt/mpt_wrapfs
 # cd test
 # ./write_demo.o
